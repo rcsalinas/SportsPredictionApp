@@ -10,43 +10,60 @@ import {
 import { Game } from "../types";
 import { RouteProp, useRoute } from "@react-navigation/native";
 import { RootStackParamList } from "../navigation/AppNavigator";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { submitPrediction } from "../services/api";
 import { useSocket } from "../context/SocketContext";
+import { getGameById } from "../services/api";
 
 type GameDetailRouteProp = RouteProp<RootStackParamList, "GameDetail">;
 
 const GameDetailScreen: React.FC = () => {
 	const route = useRoute<GameDetailRouteProp>();
 	const [game, setGame] = useState<Game | null>(null);
+	const [loading, setLoading] = useState(true);
 	const socket = useSocket();
 
+	// 1. Fetch game details from API on mount
 	useEffect(() => {
-		if (!socket) return;
+		let isMounted = true;
+		getGameById(route.params.gameId)
+			.then((data) => {
+				if (isMounted) {
+					setGame(data);
+					setLoading(false);
+				}
+			})
+			.catch(() => setLoading(false));
+		return () => {
+			isMounted = false;
+		};
+	}, [route.params.gameId]);
 
-		socket.on("gamesUpdate", (updatedGames: Game[]) => {
+	// 2. Only subscribe to WebSocket if game is in progress
+	useEffect(() => {
+		if (!socket || !game || game.status !== "inProgress") return;
+
+		const handleGamesUpdate = (updatedGames: Game[]) => {
 			const updatedGame = updatedGames.find(
 				(g) => g.id === route.params.gameId
 			);
 			if (updatedGame) {
 				setGame(updatedGame);
 			}
-		});
-
-		return () => {
-			socket.off("gamesUpdate");
 		};
-	}, [socket, route.params.gameId]);
+
+		socket.on("gamesUpdate", handleGamesUpdate);
+		return () => {
+			socket.off("gamesUpdate", handleGamesUpdate);
+		};
+	}, [socket, game, route.params.gameId]);
 
 	const handlePrediction = async (teamPick: string) => {
 		if (!game) return;
-		console.log("Submitting prediction for game:", game.id, "Team:", teamPick);
 		const result = await submitPrediction(game.id, teamPick, 50);
-
 		Alert.alert("Prediction Submitted!", result.message);
 	};
 
-	if (!game) {
+	if (loading || !game) {
 		return (
 			<View style={styles.loader}>
 				<ActivityIndicator size="large" />
@@ -73,7 +90,6 @@ const GameDetailScreen: React.FC = () => {
 				</View>
 			)}
 
-			<Text style={styles.subtitle}>Make your prediction:</Text>
 			{game.status === "inProgress" && (
 				<>
 					<Text style={styles.subtitle}>Make your prediction:</Text>

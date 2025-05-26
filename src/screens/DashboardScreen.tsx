@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
+import { useFocusEffect } from "@react-navigation/native";
 import {
 	View,
 	FlatList,
@@ -20,32 +21,34 @@ const DashboardScreen: React.FC = () => {
 	const [loading, setLoading] = useState(true);
 	const socket = useSocket();
 
-	useEffect(() => {
-		if (!socket) return;
+	useFocusEffect(
+		React.useCallback(() => {
+			if (!socket) return;
 
-		const handleGamesUpdate = (updatedGames: Game[]) => {
-			setGames(updatedGames);
-			setLoading(false);
-		};
+			const handleGamesUpdate = (updatedGames: Game[]) => {
+				setGames(updatedGames);
+				setLoading(false);
+			};
 
-		const handleError = (error: unknown) => {
-			console.error("WebSocket Error (Dashboard):", error);
-			setLoading(false);
-		};
+			const handleError = (error: unknown) => {
+				console.error("WebSocket Error (Dashboard):", error);
+				setLoading(false);
+			};
 
-		socket.on("gamesUpdate", handleGamesUpdate);
-		socket.on("connect_error", handleError);
+			socket.on("gamesUpdate", handleGamesUpdate);
+			socket.on("connect_error", handleError);
 
-		const timeout = setTimeout(() => {
-			setLoading(false);
-		}, 8000);
+			const timeout = setTimeout(() => {
+				setLoading(false);
+			}, 8000);
 
-		return () => {
-			socket.off("gamesUpdate", handleGamesUpdate);
-			socket.off("connect_error", handleError);
-			clearTimeout(timeout);
-		};
-	}, [socket]);
+			return () => {
+				socket.off("gamesUpdate", handleGamesUpdate);
+				socket.off("connect_error", handleError);
+				clearTimeout(timeout);
+			};
+		}, [socket])
+	);
 
 	const filteredGames =
 		filter === "all" ? games : games.filter((game) => game.status === filter);

@@ -24,3 +24,8 @@ export const submitPrediction = async (
 	});
 	return response.data;
 };
+
+export const getGameById = async (gameId: string) => {
+	const response = await apiClient.get(`/games/${gameId}`);
+	return response.data;
+};
