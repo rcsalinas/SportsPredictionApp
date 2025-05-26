@@ -3,14 +3,10 @@ import {
 	View,
 	Text,
 	StyleSheet,
-	TouchableOpacity,
 	Alert,
 	ActivityIndicator,
-	TextInput,
 	KeyboardAvoidingView,
 	Platform,
-	TouchableWithoutFeedback,
-	Keyboard,
 	ScrollView,
 } from "react-native";
 import { Game } from "../types";
@@ -19,6 +15,9 @@ import { RootStackParamList } from "../navigation/AppNavigator";
 import { submitPrediction } from "../services/api";
 import { useSocket } from "../context/SocketContext";
 import { getGameById } from "../services/api";
+import { TeamDisplay } from "../components/TeamDisplay";
+import { ScoreDisplay } from "../components/ScoreDisplay";
+import { BettingInterface } from "../components/BettingInterface";
 
 type GameDetailRouteProp = RouteProp<RootStackParamList, "GameDetail">;
 
@@ -31,6 +30,15 @@ const GameDetailScreen: React.FC = () => {
 	const [betAmount, setBetAmount] = useState<string>("50");
 	const [submitting, setSubmitting] = useState(false);
 	const socket = useSocket();
+
+	const isBettingOpen = game?.status === "scheduled";
+	const leading = React.useMemo(() => {
+		if (!game || game.status === "scheduled") return null;
+		if (!game.awayTeam.score || !game.homeTeam.score) return null;
+		return game.awayTeam.score > game.homeTeam.score
+			? game.awayTeam.abbreviation
+			: game.homeTeam.abbreviation;
+	}, [game]);
 
 	useEffect(() => {
 		let isMounted = true;
@@ -104,15 +112,6 @@ const GameDetailScreen: React.FC = () => {
 		);
 	}
 
-	const isBettingOpen =
-		game.status === "scheduled" || game.status === "inProgress";
-	const leading =
-		(game.awayTeam.score ?? 0) > (game.homeTeam.score ?? 0)
-			? game.awayTeam.abbreviation
-			: (game.homeTeam.score ?? 0) > (game.awayTeam.score ?? 0)
-			? game.homeTeam.abbreviation
-			: null;
-
 	return (
 		<KeyboardAvoidingView
 			style={{ flex: 1 }}
@@ -124,134 +123,46 @@ const GameDetailScreen: React.FC = () => {
 				keyboardShouldPersistTaps="handled"
 			>
 				<View style={styles.container}>
-					{/* Teams and Score */}
 					<View style={styles.teamsRow}>
-						<View style={styles.teamBox}>
-							<Text
-								style={[
-									styles.teamAbbr,
-									{ color: "#388e3c" },
-									leading === game.awayTeam.abbreviation && isBettingOpen
-										? styles.leading
-										: null,
-									game.odds?.favorite === game.awayTeam.abbreviation &&
-									isBettingOpen
-										? styles.favorite
-										: null,
-								]}
-							>
-								{game.awayTeam.abbreviation}
-							</Text>
-							<Text style={styles.teamName}>{game.awayTeam.name}</Text>
-							{game.awayTeam.record && (
-								<Text style={styles.teamRecord}>{game.awayTeam.record}</Text>
-							)}
-						</View>
-						<View style={styles.scoreBox}>
-							<Text style={styles.scoreText}>
-								{game.awayTeam.score ?? "-"} - {game.homeTeam.score ?? "-"}
-							</Text>
-							<Text style={styles.periodText}>
-								{game.period}, {game.clock}
-							</Text>
-							<Text style={styles.statusText}>{game.status.toUpperCase()}</Text>
-						</View>
-						<View style={styles.teamBox}>
-							<Text
-								style={[
-									styles.teamAbbr,
-									{ color: "#1976d2" },
-									leading === game.homeTeam.abbreviation && isBettingOpen
-										? styles.leading
-										: null,
-									game.odds?.favorite === game.homeTeam.abbreviation &&
-									isBettingOpen
-										? styles.favorite
-										: null,
-								]}
-							>
-								{game.homeTeam.abbreviation}
-							</Text>
-							<Text style={styles.teamName}>{game.homeTeam.name}</Text>
-							{game.homeTeam.record && (
-								<Text style={styles.teamRecord}>{game.homeTeam.record}</Text>
-							)}
-						</View>
+						<TeamDisplay
+							abbreviation={game.awayTeam.abbreviation}
+							name={game.awayTeam.name}
+							record={game.awayTeam.record}
+							isLeading={leading === game.awayTeam.abbreviation}
+							isFavorite={game.odds?.favorite === game.awayTeam.abbreviation}
+							isBettingOpen={isBettingOpen}
+							color="#388e3c"
+						/>
+
+						<ScoreDisplay
+							awayScore={game.awayTeam.score}
+							homeScore={game.homeTeam.score}
+							period={game.period}
+							clock={game.clock}
+							status={game.status}
+						/>
+
+						<TeamDisplay
+							abbreviation={game.homeTeam.abbreviation}
+							name={game.homeTeam.name}
+							record={game.homeTeam.record}
+							isLeading={leading === game.homeTeam.abbreviation}
+							isFavorite={game.odds?.favorite === game.homeTeam.abbreviation}
+							isBettingOpen={isBettingOpen}
+							color="#1976d2"
+						/>
 					</View>
 
-					{/* Odds Card */}
-					{isBettingOpen && game.odds && (
-						<View style={styles.oddsCard}>
-							<View style={styles.oddsRow}>
-								<Text style={styles.oddsLabel}>Spread:</Text>
-								<Text style={styles.oddsValue}>{game.odds.spread}</Text>
-							</View>
-							<View style={styles.oddsRow}>
-								<Text style={styles.oddsLabel}>Favorite:</Text>
-								<Text style={[styles.oddsValue, styles.favorite]}>
-									{game.odds.favorite}
-								</Text>
-							</View>
-						</View>
-					)}
-
-					{/* Prediction Interface */}
 					{isBettingOpen && (
-						<>
-							<Text style={styles.subtitle}>Place Your Bet</Text>
-							<View style={styles.buttonsRow}>
-								<TouchableOpacity
-									style={[
-										styles.pickButton,
-										selectedPick === game.awayTeam.abbreviation &&
-											styles.selectedPick,
-									]}
-									onPress={() => setSelectedPick(game.awayTeam.abbreviation)}
-								>
-									<Text style={styles.pickText}>
-										{game.awayTeam.abbreviation}
-									</Text>
-									<Text style={styles.pickTeamName}>{game.awayTeam.name}</Text>
-								</TouchableOpacity>
-								<TouchableOpacity
-									style={[
-										styles.pickButton,
-										selectedPick === game.homeTeam.abbreviation &&
-											styles.selectedPick,
-									]}
-									onPress={() => setSelectedPick(game.homeTeam.abbreviation)}
-								>
-									<Text style={styles.pickText}>
-										{game.homeTeam.abbreviation}
-									</Text>
-									<Text style={styles.pickTeamName}>{game.homeTeam.name}</Text>
-								</TouchableOpacity>
-							</View>
-							<View style={styles.amountRow}>
-								<Text style={styles.amountLabel}>Bet Amount: $</Text>
-								<TextInput
-									style={styles.amountInput}
-									value={betAmount}
-									onChangeText={setBetAmount}
-									keyboardType="numeric"
-									maxLength={5}
-									placeholder="Amount"
-								/>
-							</View>
-							<TouchableOpacity
-								style={[
-									styles.submitButton,
-									(!selectedPick || !betAmount || submitting) &&
-										styles.submitButtonDisabled,
-								]}
-								onPress={handleSubmitBet}
-								disabled={!selectedPick || !betAmount || submitting}
-							>
-								<Text style={styles.submitButtonText}>
-									{submitting ? "Submitting..." : "Submit Bet"}
-								</Text>
-							</TouchableOpacity>
-						</>
+						<BettingInterface
+							game={game}
+							selectedPick={selectedPick}
+							setSelectedPick={setSelectedPick}
+							betAmount={betAmount}
+							setBetAmount={setBetAmount}
+							onSubmit={handleSubmitBet}
+							submitting={submitting}
+						/>
 					)}
 				</View>
 			</ScrollView>
