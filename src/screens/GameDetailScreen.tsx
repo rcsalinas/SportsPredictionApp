@@ -1,14 +1,110 @@
-import { StyleSheet, Text, View } from "react-native";
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { View, Text, StyleSheet, TouchableOpacity, Alert } from "react-native";
+import gamesData from "../data/sample-games.json";
+import { Game } from "../types";
+import { RouteProp, useRoute } from "@react-navigation/native";
+import { RootStackParamList } from "../navigation/AppNavigator";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+type GameDetailRouteProp = RouteProp<RootStackParamList, "GameDetail">;
 
 const GameDetailScreen: React.FC = () => {
+	const route = useRoute<GameDetailRouteProp>();
+	const [game, setGame] = useState<Game | null>(null);
+
+	useEffect(() => {
+		const gameFound = gamesData.games.find((g) => g.id === route.params.gameId);
+		if (gameFound) {
+			setGame(gameFound as Game);
+		}
+	}, [route.params.gameId]);
+
+	const handlePrediction = async (teamPick: string) => {
+		const prediction = {
+			gameId: game?.id,
+			pick: teamPick,
+			amount: 50,
+			result: "pending",
+		};
+
+		const existingPredictions = await AsyncStorage.getItem("predictions");
+		const predictions = existingPredictions
+			? JSON.parse(existingPredictions)
+			: [];
+		predictions.push(prediction);
+		await AsyncStorage.setItem("predictions", JSON.stringify(predictions));
+
+		Alert.alert("Prediction Saved!", `You picked ${teamPick}`);
+	};
+
+	if (!game) {
+		return (
+			<View style={styles.container}>
+				<Text style={styles.loading}>Loading...</Text>
+			</View>
+		);
+	}
+
 	return (
-		<View>
-			<Text>GameDetailScreen</Text>
+		<View style={styles.container}>
+			<Text style={styles.title}>
+				{game.awayTeam.name} @ {game.homeTeam.name}
+			</Text>
+			<Text style={styles.info}>Status: {game.status.toUpperCase()}</Text>
+			{game.status === "inProgress" && (
+				<Text style={styles.info}>
+					{game.awayTeam.score} - {game.homeTeam.score} ({game.period},{" "}
+					{game.clock})
+				</Text>
+			)}
+			{game.odds && (
+				<View style={styles.odds}>
+					<Text style={styles.oddsText}>Spread: {game.odds.spread}</Text>
+					<Text style={styles.oddsText}>Favorite: {game.odds.favorite}</Text>
+				</View>
+			)}
+
+			<Text style={styles.subtitle}>Make your prediction:</Text>
+			<View style={styles.buttons}>
+				<TouchableOpacity
+					style={styles.button}
+					onPress={() => handlePrediction(game.homeTeam.abbreviation)}
+				>
+					<Text>{game.homeTeam.abbreviation}</Text>
+				</TouchableOpacity>
+
+				<TouchableOpacity
+					style={styles.button}
+					onPress={() => handlePrediction(game.awayTeam.abbreviation)}
+				>
+					<Text>{game.awayTeam.abbreviation}</Text>
+				</TouchableOpacity>
+			</View>
 		</View>
 	);
 };
 
-export default GameDetailScreen;
+const styles = StyleSheet.create({
+	container: { flex: 1, padding: 20, backgroundColor: "#fff" },
+	loading: { fontSize: 16 },
+	title: { fontSize: 22, fontWeight: "bold", marginBottom: 10 },
+	subtitle: { fontSize: 18, fontWeight: "600", marginTop: 20 },
+	info: { fontSize: 16, marginVertical: 4 },
+	odds: { marginVertical: 10 },
+	oddsText: { fontSize: 16, color: "#007bff" },
+	buttons: {
+		flexDirection: "row",
+		justifyContent: "space-around",
+		marginTop: 20,
+	},
+	button: {
+		padding: 10,
+		borderRadius: 8,
+		backgroundColor: "#ececec",
+		alignItems: "center",
+		justifyContent: "center",
+		width: 120,
+	},
+});
 
-const styles = StyleSheet.create({});
+export default GameDetailScreen;
