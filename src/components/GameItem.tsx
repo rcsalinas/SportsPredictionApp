@@ -26,13 +26,15 @@ const GameItem: React.FC<GameItemProps> = ({ game }) => {
 		}
 	};
 
+	const isGameActive =
+		game.status === "scheduled" || game.status === "inProgress";
+
 	return (
-		<TouchableOpacity
-			style={styles.container}
-			onPress={() => navigation.navigate("GameDetail", { gameId: game.id })}
-		>
+		<View style={styles.container}>
 			<View style={styles.header}>
-				<Text style={styles.status}>{game.status.toUpperCase()}</Text>
+				<Text style={[styles.status, { color: getStatusColor(game.status) }]}>
+					{game.status.toUpperCase()}
+				</Text>
 				{game.status === "scheduled" && game.startTime && (
 					<Text style={styles.time}>
 						{new Date(game.startTime).toLocaleString()}
@@ -70,15 +72,20 @@ const GameItem: React.FC<GameItemProps> = ({ game }) => {
 				</View>
 			)}
 
-			{game.status === "scheduled" && (
+			{isGameActive && (
 				<TouchableOpacity
-					style={styles.betButton}
+					style={[
+						styles.betButton,
+						game.status === "inProgress" && styles.liveButton,
+					]}
 					onPress={() => navigation.navigate("GameDetail", { gameId: game.id })}
 				>
-					<Text style={styles.betButtonText}>Place Bet</Text>
+					<Text style={styles.betButtonText}>
+						{game.status === "scheduled" ? "Place Bet" : "View Live"}
+					</Text>
 				</TouchableOpacity>
 			)}
-		</TouchableOpacity>
+		</View>
 	);
 };
 
@@ -94,6 +101,9 @@ const styles = StyleSheet.create({
 		shadowOpacity: 0.1,
 		shadowRadius: 4,
 		elevation: 3,
+	},
+	liveButton: {
+		backgroundColor: "#ff9800", // Orange color for live games
 	},
 	header: {
 		flexDirection: "row",

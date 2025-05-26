@@ -31,7 +31,8 @@ const GameDetailScreen: React.FC = () => {
 	const [submitting, setSubmitting] = useState(false);
 	const socket = useSocket();
 
-	const isBettingOpen = game?.status === "scheduled";
+	const isBettingOpen =
+		game?.status === "scheduled" || game?.status === "inProgress";
 	const leading = React.useMemo(() => {
 		if (!game || game.status === "scheduled") return null;
 		if (!game.awayTeam.score || !game.homeTeam.score) return null;
