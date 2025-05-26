@@ -8,8 +8,12 @@ const apiClient = axios.create({
 });
 
 export const fetchGames = async () => {
-	const response = await apiClient.get("/games");
-	return response.data.games;
+	try {
+		const response = await apiClient.get("/games");
+		return response.data.games;
+	} catch (error) {
+		throw error;
+	}
 };
 
 export const submitPrediction = async (
@@ -17,15 +21,32 @@ export const submitPrediction = async (
 	pick: string,
 	amount: number
 ) => {
-	const response = await apiClient.post("/games/predict", {
-		gameId,
-		pick,
-		amount,
-	});
-	return response.data;
+	try {
+		const response = await apiClient.post("/predictions", {
+			gameId,
+			pick,
+			amount,
+		});
+		return response.data;
+	} catch (error) {
+		throw error;
+	}
 };
 
 export const getGameById = async (gameId: string) => {
-	const response = await apiClient.get(`/games/${gameId}`);
-	return response.data;
+	try {
+		const response = await apiClient.get(`/games/${gameId}`);
+		return response.data;
+	} catch (error) {
+		throw error;
+	}
+};
+
+export const fetchUserPredictions = async (userId: string) => {
+	try {
+		const response = await apiClient.get(`/predictions?userId=${userId}`);
+		return response.data.predictions;
+	} catch (error) {
+		throw error;
+	}
 };

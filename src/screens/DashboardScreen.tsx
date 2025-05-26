@@ -12,6 +12,7 @@ import {
 import { Game } from "../types";
 import GameItem from "../components/GameItem";
 import { useSocket } from "../context/SocketContext";
+import { fetchGames } from "../services/api";
 
 type GameStatus = "all" | "scheduled" | "inProgress" | "final";
 
@@ -21,6 +22,26 @@ const DashboardScreen: React.FC = () => {
 	const [loading, setLoading] = useState(true);
 	const socket = useSocket();
 
+	// 1. Fetch games from API on mount/focus
+	useFocusEffect(
+		React.useCallback(() => {
+			let isActive = true;
+			setLoading(true);
+			fetchGames()
+				.then((data) => {
+					if (isActive) {
+						setGames(data);
+						setLoading(false);
+					}
+				})
+				.catch(() => setLoading(false));
+			return () => {
+				isActive = false;
+			};
+		}, [])
+	);
+
+	// 2. Listen for WebSocket updates (overrides API data)
 	useFocusEffect(
 		React.useCallback(() => {
 			if (!socket) return;
@@ -38,14 +59,9 @@ const DashboardScreen: React.FC = () => {
 			socket.on("gamesUpdate", handleGamesUpdate);
 			socket.on("connect_error", handleError);
 
-			const timeout = setTimeout(() => {
-				setLoading(false);
-			}, 8000);
-
 			return () => {
 				socket.off("gamesUpdate", handleGamesUpdate);
 				socket.off("connect_error", handleError);
-				clearTimeout(timeout);
 			};
 		}, [socket])
 	);

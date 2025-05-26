@@ -1,24 +1,33 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, FlatList, StyleSheet } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import {
+	View,
+	Text,
+	FlatList,
+	StyleSheet,
+	ActivityIndicator,
+} from "react-native";
 import { Prediction } from "../types";
+import { fetchUserPredictions } from "../services/api";
 
 const ProfileScreen: React.FC = () => {
 	const [predictions, setPredictions] = useState<Prediction[]>([]);
-	const [balance, setBalance] = useState<number>(1000); // Initial balance can be dynamic
+	const [balance, setBalance] = useState<number>(1000);
 	const [stats, setStats] = useState({ wins: 0, losses: 0, pending: 0 });
+	const [loading, setLoading] = useState(true);
 
 	useEffect(() => {
 		const loadData = async () => {
-			const storedPredictions = await AsyncStorage.getItem("predictions");
-			const preds: Prediction[] = storedPredictions
-				? JSON.parse(storedPredictions)
-				: [];
-
-			setPredictions(preds);
-			calculateStats(preds);
+			try {
+				const preds = await fetchUserPredictions("usr123");
+				setPredictions(preds);
+				calculateStats(preds);
+			} catch (e) {
+				setPredictions([]);
+				calculateStats([]);
+			} finally {
+				setLoading(false);
+			}
 		};
-
 		loadData();
 	}, []);
 
@@ -30,12 +39,20 @@ const ProfileScreen: React.FC = () => {
 		const calculatedBalance = preds.reduce((total, pred) => {
 			if (pred.result === "win") return total + (pred.payout || 0);
 			if (pred.result === "loss") return total - pred.amount;
-			return total; // Pending doesn't affect balance yet
-		}, 1000); // Starting balance
+			return total;
+		}, 1000);
 
 		setStats({ wins, losses, pending });
 		setBalance(calculatedBalance);
 	};
+
+	if (loading) {
+		return (
+			<View style={styles.loader}>
+				<ActivityIndicator size="large" />
+			</View>
+		);
+	}
 
 	return (
 		<View style={styles.container}>
@@ -88,6 +105,7 @@ const styles = StyleSheet.create({
 	win: { color: "green" },
 	loss: { color: "red" },
 	pending: { color: "orange" },
+	loader: { flex: 1, justifyContent: "center", alignItems: "center" },
 });
 
 export default ProfileScreen;
