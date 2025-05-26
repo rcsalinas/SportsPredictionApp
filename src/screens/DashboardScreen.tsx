@@ -9,6 +9,7 @@ import {
 	ActivityIndicator,
 	SafeAreaView,
 	ScrollView,
+	Platform,
 } from "react-native";
 import { Game } from "../types";
 import GameItem from "../components/GameItem";
@@ -27,19 +28,24 @@ const DashboardScreen: React.FC = () => {
 	useFocusEffect(
 		React.useCallback(() => {
 			let isActive = true;
-			setLoading(true);
-			fetchGames()
-				.then((data) => {
-					if (isActive) {
-						setGames(data);
-						setLoading(false);
-					}
-				})
-				.catch(() => setLoading(false));
+
+			//  only trigger loading if data is empty
+			if (games.length === 0) {
+				setLoading(true);
+				fetchGames()
+					.then((data) => {
+						if (isActive) {
+							setGames(data);
+							setLoading(false);
+						}
+					})
+					.catch(() => setLoading(false));
+			}
+
 			return () => {
 				isActive = false;
 			};
-		}, [])
+		}, [games.length])
 	);
 
 	// 2. Listen for WebSocket updates (overrides API data)
@@ -79,59 +85,85 @@ const DashboardScreen: React.FC = () => {
 	}
 
 	return (
-		<SafeAreaView style={styles.container}>
-			<ScrollView
-				horizontal
-				showsHorizontalScrollIndicator={false}
-				contentContainerStyle={styles.filtersScrollContainer}
-			>
-				{(["all", "scheduled", "inProgress", "final"] as GameStatus[]).map(
-					(status) => (
-						<TouchableOpacity
-							key={status}
-							style={[
-								styles.filterButton,
-								filter === status && styles.activeFilter,
-							]}
-							onPress={() => setFilter(status)}
-						>
-							<Text
-								style={[
-									styles.filterText,
-									filter === status && styles.activeFilterText,
-								]}
-							>
-								{status === "inProgress" ? "LIVE" : status.toUpperCase()}
-							</Text>
-						</TouchableOpacity>
-					)
-				)}
-			</ScrollView>
-			<FlatList
-				data={filteredGames}
-				keyExtractor={(item) => item.id}
-				renderItem={({ item }) => <GameItem game={item} />}
-			/>
+		<SafeAreaView style={styles.safeArea}>
+			<View style={styles.container}>
+				<View style={styles.filtersContainer}>
+					<ScrollView
+						horizontal
+						showsHorizontalScrollIndicator={false}
+						contentContainerStyle={styles.filtersScrollContainer}
+						bounces={false}
+						scrollEventThrottle={16}
+					>
+						{(["all", "scheduled", "inProgress", "final"] as GameStatus[]).map(
+							(status) => (
+								<TouchableOpacity
+									key={status}
+									style={[
+										styles.filterButton,
+										filter === status && styles.activeFilter,
+									]}
+									onPress={() => setFilter(status)}
+								>
+									<Text
+										style={[
+											styles.filterText,
+											filter === status && styles.activeFilterText,
+										]}
+									>
+										{status === "inProgress" ? "LIVE" : status.toUpperCase()}
+									</Text>
+								</TouchableOpacity>
+							)
+						)}
+					</ScrollView>
+				</View>
+
+				<FlatList
+					data={filteredGames}
+					keyExtractor={(item) => item.id}
+					renderItem={({ item }) => <GameItem game={item} />}
+					contentContainerStyle={styles.listContainer}
+					removeClippedSubviews={Platform.OS === "ios"}
+					scrollEventThrottle={16}
+					showsVerticalScrollIndicator={false}
+				/>
+			</View>
 		</SafeAreaView>
 	);
 };
 
 const styles = StyleSheet.create({
+	safeArea: {
+		flex: 1,
+		backgroundColor: "#fff",
+	},
 	container: {
 		flex: 1,
 		backgroundColor: "#f8f9fa",
 	},
-	filtersScrollContainer: {
-		paddingHorizontal: 16,
-		paddingVertical: 12,
+	filtersContainer: {
 		backgroundColor: "#fff",
 		shadowColor: "#000",
 		shadowOffset: { width: 0, height: 2 },
 		shadowOpacity: 0.05,
 		shadowRadius: 3,
 		elevation: 3,
+		...Platform.select({
+			ios: {
+				zIndex: 1,
+			},
+		}),
+	},
+	filtersScrollContainer: {
+		paddingHorizontal: 16,
+		paddingVertical: 12,
 		gap: 8,
 	},
+	listContainer: {
+		paddingVertical: 8,
+	},
+
 	filterButton: {
 		paddingHorizontal: 20,
 		borderRadius: 20,
