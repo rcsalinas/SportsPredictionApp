@@ -5,44 +5,61 @@ import {
 	Text,
 	StyleSheet,
 	TouchableOpacity,
+	ActivityIndicator,
+	SafeAreaView,
 } from "react-native";
-import gamesData from "../data/sample-games.json";
 import { Game } from "../types";
 import GameItem from "../components/GameItem";
-import { useNavigation } from "@react-navigation/native";
-import { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { RootStackParamList } from "../navigation/AppNavigator";
+import { useSocket } from "../context/SocketContext";
 
 type GameStatus = "all" | "scheduled" | "inProgress" | "final";
 
 const DashboardScreen: React.FC = () => {
 	const [games, setGames] = useState<Game[]>([]);
 	const [filter, setFilter] = useState<GameStatus>("all");
-	const navigation =
-		useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+	const [loading, setLoading] = useState(true);
+	const socket = useSocket();
 
 	useEffect(() => {
-		navigation.setOptions({
-			headerRight: () => (
-				<TouchableOpacity
-					style={{ marginRight: 15 }}
-					onPress={() => navigation.navigate("Profile")}
-				>
-					<Text style={{ color: "#007bff" }}>Profile</Text>
-				</TouchableOpacity>
-			),
-		});
-	}, [navigation]);
+		if (!socket) return;
 
-	useEffect(() => {
-		setGames(gamesData.games as Game[]);
-	}, []);
+		const handleGamesUpdate = (updatedGames: Game[]) => {
+			setGames(updatedGames);
+			setLoading(false);
+		};
+
+		const handleError = (error: unknown) => {
+			console.error("WebSocket Error (Dashboard):", error);
+			setLoading(false);
+		};
+
+		socket.on("gamesUpdate", handleGamesUpdate);
+		socket.on("connect_error", handleError);
+
+		const timeout = setTimeout(() => {
+			setLoading(false);
+		}, 8000);
+
+		return () => {
+			socket.off("gamesUpdate", handleGamesUpdate);
+			socket.off("connect_error", handleError);
+			clearTimeout(timeout);
+		};
+	}, [socket]);
 
 	const filteredGames =
 		filter === "all" ? games : games.filter((game) => game.status === filter);
 
+	if (loading) {
+		return (
+			<SafeAreaView style={styles.loader}>
+				<ActivityIndicator size="large" />
+			</SafeAreaView>
+		);
+	}
+
 	return (
-		<View style={styles.container}>
+		<SafeAreaView style={styles.container}>
 			<View style={styles.filters}>
 				{(["all", "scheduled", "inProgress", "final"] as GameStatus[]).map(
 					(status) => (
@@ -64,7 +81,7 @@ const DashboardScreen: React.FC = () => {
 				keyExtractor={(item) => item.id}
 				renderItem={({ item }) => <GameItem game={item} />}
 			/>
-		</View>
+		</SafeAreaView>
 	);
 };
 
@@ -78,6 +95,7 @@ const styles = StyleSheet.create({
 	filterButton: { padding: 8, borderRadius: 8, backgroundColor: "#ececec" },
 	activeFilter: { backgroundColor: "#007bff" },
 	filterText: { color: "#000" },
+	loader: { flex: 1, justifyContent: "center", alignItems: "center" },
 });
 
 export default DashboardScreen;

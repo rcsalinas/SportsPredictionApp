@@ -1,46 +1,55 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from "react-native";
-import gamesData from "../data/sample-games.json";
+import {
+	View,
+	Text,
+	StyleSheet,
+	TouchableOpacity,
+	Alert,
+	ActivityIndicator,
+} from "react-native";
 import { Game } from "../types";
 import { RouteProp, useRoute } from "@react-navigation/native";
 import { RootStackParamList } from "../navigation/AppNavigator";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { submitPrediction } from "../services/api";
+import { useSocket } from "../context/SocketContext";
 
 type GameDetailRouteProp = RouteProp<RootStackParamList, "GameDetail">;
 
 const GameDetailScreen: React.FC = () => {
 	const route = useRoute<GameDetailRouteProp>();
 	const [game, setGame] = useState<Game | null>(null);
+	const socket = useSocket();
 
 	useEffect(() => {
-		const gameFound = gamesData.games.find((g) => g.id === route.params.gameId);
-		if (gameFound) {
-			setGame(gameFound as Game);
-		}
-	}, [route.params.gameId]);
+		if (!socket) return;
+
+		socket.on("gamesUpdate", (updatedGames: Game[]) => {
+			const updatedGame = updatedGames.find(
+				(g) => g.id === route.params.gameId
+			);
+			if (updatedGame) {
+				setGame(updatedGame);
+			}
+		});
+
+		return () => {
+			socket.off("gamesUpdate");
+		};
+	}, [socket, route.params.gameId]);
 
 	const handlePrediction = async (teamPick: string) => {
-		const prediction = {
-			gameId: game?.id,
-			pick: teamPick,
-			amount: 50,
-			result: "pending",
-		};
+		if (!game) return;
+		console.log("Submitting prediction for game:", game.id, "Team:", teamPick);
+		const result = await submitPrediction(game.id, teamPick, 50);
 
-		const existingPredictions = await AsyncStorage.getItem("predictions");
-		const predictions = existingPredictions
-			? JSON.parse(existingPredictions)
-			: [];
-		predictions.push(prediction);
-		await AsyncStorage.setItem("predictions", JSON.stringify(predictions));
-
-		Alert.alert("Prediction Saved!", `You picked ${teamPick}`);
+		Alert.alert("Prediction Submitted!", result.message);
 	};
 
 	if (!game) {
 		return (
-			<View style={styles.container}>
-				<Text style={styles.loading}>Loading...</Text>
+			<View style={styles.loader}>
+				<ActivityIndicator size="large" />
 			</View>
 		);
 	}
@@ -65,21 +74,26 @@ const GameDetailScreen: React.FC = () => {
 			)}
 
 			<Text style={styles.subtitle}>Make your prediction:</Text>
-			<View style={styles.buttons}>
-				<TouchableOpacity
-					style={styles.button}
-					onPress={() => handlePrediction(game.homeTeam.abbreviation)}
-				>
-					<Text>{game.homeTeam.abbreviation}</Text>
-				</TouchableOpacity>
+			{game.status === "inProgress" && (
+				<>
+					<Text style={styles.subtitle}>Make your prediction:</Text>
+					<View style={styles.buttons}>
+						<TouchableOpacity
+							style={styles.button}
+							onPress={() => handlePrediction(game.homeTeam.abbreviation)}
+						>
+							<Text>{game.homeTeam.abbreviation}</Text>
+						</TouchableOpacity>
 
-				<TouchableOpacity
-					style={styles.button}
-					onPress={() => handlePrediction(game.awayTeam.abbreviation)}
-				>
-					<Text>{game.awayTeam.abbreviation}</Text>
-				</TouchableOpacity>
-			</View>
+						<TouchableOpacity
+							style={styles.button}
+							onPress={() => handlePrediction(game.awayTeam.abbreviation)}
+						>
+							<Text>{game.awayTeam.abbreviation}</Text>
+						</TouchableOpacity>
+					</View>
+				</>
+			)}
 		</View>
 	);
 };
@@ -105,6 +119,7 @@ const styles = StyleSheet.create({
 		justifyContent: "center",
 		width: 120,
 	},
+	loader: { flex: 1, justifyContent: "center", alignItems: "center" },
 });
 
 export default GameDetailScreen;
