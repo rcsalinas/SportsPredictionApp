@@ -93,7 +93,14 @@ const GameDetailScreen: React.FC = () => {
 		setSubmitting(true);
 		try {
 			const amount = parseInt(betAmount, 10) || 0;
-			const result = await submitPrediction(game.id, selectedPick, amount);
+			const result = await submitPrediction(
+				game.id,
+				selectedPick,
+				amount,
+				game.homeTeam.name,
+				game.awayTeam.name,
+				game.startTime
+			);
 			Alert.alert("Prediction Submitted!", result.message);
 			setSelectedPick(null);
 		} catch (error: any) {

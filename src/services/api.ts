@@ -19,13 +19,27 @@ export const fetchGames = async () => {
 export const submitPrediction = async (
 	gameId: string,
 	pick: string,
-	amount: number
+	amount: number,
+	homeTeam?: string,
+	awayTeam?: string,
+	startTime?: string
 ) => {
+	console.log("Submitting prediction:", {
+		gameId,
+		pick,
+		amount,
+		homeTeam,
+		awayTeam,
+		startTime,
+	});
 	try {
 		const response = await apiClient.post("/predictions", {
 			gameId,
 			pick,
 			amount,
+			homeTeam,
+			awayTeam,
+			startTime,
 		});
 		return response.data;
 	} catch (error) {

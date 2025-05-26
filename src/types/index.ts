@@ -28,6 +28,9 @@ export type Prediction = {
 	amount: number;
 	result: "win" | "loss" | "pending";
 	payout?: number;
+	homeTeam?: string;
+	awayTeam?: string;
+	startTime: string;
 };
 
 export type User = {

@@ -50,9 +50,18 @@ const ProfileScreen: React.FC = () => {
 	const renderPredictionItem = ({ item }: { item: Prediction }) => (
 		<View style={styles.predictionCard}>
 			<View style={styles.predictionHeader}>
-				<Text style={styles.gameId}>Game ID: {item.gameId}</Text>
+				<View style={styles.gameInfo}>
+					<Text style={styles.gameTime}>
+						{new Date(item.startTime).toLocaleDateString()}
+					</Text>
+					<Text style={styles.teamsText}>
+						{item.awayTeam} @ {item.homeTeam}
+					</Text>
+				</View>
 				<View style={[styles.resultBadge, styles[`${item.result}Badge`]]}>
-					<Text style={styles.resultText}>{item.result.toUpperCase()}</Text>
+					<Text style={[styles.resultText, styles[item.result]]}>
+						{item.result.toUpperCase()}
+					</Text>
 				</View>
 			</View>
 			<View style={styles.predictionDetails}>
@@ -117,6 +126,26 @@ const styles = StyleSheet.create({
 	container: {
 		flex: 1,
 		backgroundColor: "#f8f9fa",
+	},
+	gameInfo: {
+		flex: 1,
+		marginRight: 12,
+	},
+	gameTime: {
+		fontSize: 12,
+		color: "#666",
+		marginBottom: 4,
+	},
+	teamsText: {
+		fontSize: 14,
+		fontWeight: "600",
+		color: "#333",
+	},
+	predictionHeader: {
+		flexDirection: "row",
+		justifyContent: "space-between",
+		alignItems: "flex-start", // Changed from center to flex-start
+		marginBottom: 12,
 	},
 	header: {
 		padding: 20,
@@ -190,12 +219,7 @@ const styles = StyleSheet.create({
 		shadowRadius: 3,
 		elevation: 2,
 	},
-	predictionHeader: {
-		flexDirection: "row",
-		justifyContent: "space-between",
-		alignItems: "center",
-		marginBottom: 12,
-	},
+
 	gameId: {
 		fontSize: 14,
 		color: "#666",
