@@ -30,6 +30,7 @@ const AppNavigator: React.FC = () => {
 								<Text style={{ color: "#007bff" }}>Profile</Text>
 							</TouchableOpacity>
 						),
+						title: "Home",
 					})}
 				/>
 				<Stack.Screen name="GameDetail" component={GameDetailScreen} />

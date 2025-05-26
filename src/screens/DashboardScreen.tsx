@@ -8,6 +8,7 @@ import {
 	TouchableOpacity,
 	ActivityIndicator,
 	SafeAreaView,
+	ScrollView,
 } from "react-native";
 import { Game } from "../types";
 import GameItem from "../components/GameItem";
@@ -79,7 +80,11 @@ const DashboardScreen: React.FC = () => {
 
 	return (
 		<SafeAreaView style={styles.container}>
-			<View style={styles.filters}>
+			<ScrollView
+				horizontal
+				showsHorizontalScrollIndicator={false}
+				contentContainerStyle={styles.filtersScrollContainer}
+			>
 				{(["all", "scheduled", "inProgress", "final"] as GameStatus[]).map(
 					(status) => (
 						<TouchableOpacity
@@ -90,11 +95,18 @@ const DashboardScreen: React.FC = () => {
 							]}
 							onPress={() => setFilter(status)}
 						>
-							<Text style={styles.filterText}>{status.toUpperCase()}</Text>
+							<Text
+								style={[
+									styles.filterText,
+									filter === status && styles.activeFilterText,
+								]}
+							>
+								{status === "inProgress" ? "LIVE" : status.toUpperCase()}
+							</Text>
 						</TouchableOpacity>
 					)
 				)}
-			</View>
+			</ScrollView>
 			<FlatList
 				data={filteredGames}
 				keyExtractor={(item) => item.id}
@@ -105,15 +117,45 @@ const DashboardScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-	container: { flex: 1, padding: 16, backgroundColor: "#fff" },
-	filters: {
-		flexDirection: "row",
-		justifyContent: "space-around",
-		marginBottom: 16,
+	container: {
+		flex: 1,
+		backgroundColor: "#f8f9fa",
 	},
-	filterButton: { padding: 8, borderRadius: 8, backgroundColor: "#ececec" },
-	activeFilter: { backgroundColor: "#007bff" },
-	filterText: { color: "#000" },
+	filtersScrollContainer: {
+		paddingHorizontal: 16,
+		paddingVertical: 12,
+		backgroundColor: "#fff",
+		shadowColor: "#000",
+		shadowOffset: { width: 0, height: 2 },
+		shadowOpacity: 0.05,
+		shadowRadius: 3,
+		elevation: 3,
+		gap: 8,
+	},
+	filterButton: {
+		paddingHorizontal: 20,
+		borderRadius: 20,
+		backgroundColor: "#f1f3f5",
+		minWidth: 80,
+		alignItems: "center",
+		marginRight: 8,
+		flexDirection: "row",
+		justifyContent: "center",
+		alignContent: "center",
+		height: 36,
+	},
+
+	activeFilter: {
+		backgroundColor: "#007bff",
+	},
+	filterText: {
+		fontSize: 13,
+		fontWeight: "600",
+		color: "#495057",
+	},
+	activeFilterText: {
+		color: "#fff",
+	},
 	loader: { flex: 1, justifyContent: "center", alignItems: "center" },
 });
 
